@@ -1,4 +1,4 @@
-FROM php:7.2-fpm
+FROM php:8.0-fpm
 
 # Install NGINX
 RUN apt-get update && apt-get install -y nginx
@@ -26,13 +26,6 @@ RUN docker-php-ext-install pdo_mysql mysqli && \
     docker-php-ext-install exif && \
     pecl install imagick && \
     docker-php-ext-enable imagick
-
-# Include Woltlab Setup
-RUN wget -O /tmp/woltlab.zip https://assets.woltlab.com/release/woltlab-suite-5.2.9.zip && \
-    unzip /tmp/woltlab.zip -d /tmp/woltlab && \
-    mkdir -p /var/www/woltlab && \
-    mkdir -p /opt/woltlab && \
-    mv /tmp/woltlab/upload/* /opt/woltlab
 
 # Setup crontab
 COPY cron.php /opt/woltlab/cron.php
