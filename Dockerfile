@@ -6,9 +6,9 @@ ARG MODULE_NAME=headers-more-nginx-module-src
 
 RUN set -x && \
     apt-get update && apt-get install -y --no-install-recommends autoconf dpkg-dev file g++ gcc make pkgconf re2c libcurl4-nss-dev libjpeg-dev libpng-dev libpq-dev libjpeg62-turbo-dev libxml2-dev libxslt1-dev libfreetype6-dev libmagickwand-dev libpcre++-dev zlib1g-dev git libwebp-dev && \
-    apt-get install -y cron wget unzip imagemagick
+    apt-get install -y wget unzip imagemagick
 
-#Install nginx with more headers
+#Compile and install nginx with more headers
 RUN cd /usr/src && \
     curl -L 'http://nginx.org/download/nginx-1.21.4.tar.gz' -o "nginx.tar.gz" && \
     tar -xzvf nginx.tar.gz && \
@@ -17,7 +17,7 @@ RUN cd /usr/src && \
     tar -zxC /usr/src -f ${MODULE_VERSION}.tar.gz && \
     mv ${MODULE_NAME}-${MODULE_VERSION}/ ${MODULE_NAME} && \
     cd /usr/src/nginx-1.21.4 && \
-    ./configure --with-compat --add-dynamic-module=../${MODULE_NAME}/ --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log && \
+    ./configure --add-module=../${MODULE_NAME}/ --prefix=/opt/nginx --user=www-data --group=www-data --with-threads --with-file-aio --error-log-path=/var/log/nginx/error.log && \
     make && make modules && make install
 
 # Install ImageMagick
@@ -29,7 +29,7 @@ RUN git clone https://github.com/Imagick/imagick; \
     docker-php-ext-enable imagick; 
 
 # Install PHP Extensions
-RUN docker-php-ext-install pdo_mysql mysqli && \
+RUN docker-php-ext-install pdo_mysql mysqli bcmath && \
     docker-php-ext-configure gd --with-webp --with-jpeg=/usr --with-freetype=/usr/ && \
     docker-php-ext-install gd && \
     docker-php-ext-install exif && \
@@ -37,20 +37,16 @@ RUN docker-php-ext-install pdo_mysql mysqli && \
     rm -rf /tmp/pear  && \
     docker-php-ext-enable redis xdebug
 
+# Install Composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
 #Clean
 RUN apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false autoconf dpkg-dev file g++ gcc make pkgconf re2c libcurl4-nss-dev libjpeg-dev libpng-dev libpq-dev libjpeg62-turbo-dev libxml2-dev libxslt1-dev libfreetype6-dev libmagickwand-dev libpcre++-dev zlib1g-dev git libwebp-dev; \
     rm -rf /var/lib/apt/lists/*; \
     chmod 777 /tmp
 
-# Setup crontab
-COPY cron.php /opt/woltlab/cron.php
-COPY crontab /etc/cron.d/woltlab-cron
-RUN chmod 0644 /etc/cron.d/woltlab-cron
-RUN crontab /etc/cron.d/woltlab-cron
-
-
 COPY php.ini /usr/local/etc/php/php.ini
-COPY nginx-site.conf /etc/nginx/sites-enabled/default
+COPY nginx-site.conf /opt/nginx/conf/nginx.conf
 COPY entrypoint.sh /etc/entrypoint.sh
 
 EXPOSE 80
